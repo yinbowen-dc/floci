@@ -1,5 +1,8 @@
 # Lambda MicroVMs
 
+`RunMicrovm` selects the requested `imageVersion`, or the latest active version
+when it is omitted. A missing version fails before a MicroVM record is created.
+
 **Protocol:** REST JSON
 **Endpoints:** `http://localhost:4566/2025-09-09/...` (images, MicroVMs) and `http://localhost:4566/2026-04-04/...` (network connectors)
 

@@ -351,6 +351,10 @@ public class LambdaMicrovmsService implements ResourceProvider {
     }
 
     public Microvm runMicrovm(String region, String accountId, String imageIdentifier) {
+        return runMicrovm(region, accountId, imageIdentifier, null);
+    }
+
+    public Microvm runMicrovm(String region, String accountId, String imageIdentifier, String imageVersion) {
         if (imageIdentifier == null || imageIdentifier.isBlank()) {
             throw new AwsException("ValidationException", "imageIdentifier is required", 400);
         }
@@ -359,10 +363,12 @@ public class LambdaMicrovmsService implements ResourceProvider {
             throw new AwsException("ResourceNotFoundException",
                     "MicroVM image not found: " + imageIdentifier, 404);
         }
+        MicrovmImageVersion version = getVersion(region, imageIdentifier,
+                imageVersion == null ? image.latestActiveImageVersion : imageVersion);
         Microvm vm = new Microvm();
         vm.microvmId = "microvm-" + UUID.randomUUID();
         vm.imageArn = image.imageArn;
-        vm.imageVersion = image.latestActiveImageVersion;
+        vm.imageVersion = version.imageVersion;
         vm.endpoint = UUID.randomUUID() + ".lambda-microvm." + region + ".on.aws";
         vm.startedAt = Instant.now();
         // Settle instantly: the response carries PENDING, the next read RUNNING.

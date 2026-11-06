@@ -271,7 +271,7 @@ public class LambdaMicrovmsController {
         String region = regionResolver.resolveRegion(headers);
         JsonNode request = parse(body);
         Microvm vm = service.runMicrovm(region, regionResolver.getAccountId(),
-                text(request, "imageIdentifier"));
+                text(request, "imageIdentifier"), text(request, "imageVersion"));
         return Response.ok(vmNode(vm)).build();
     }
 
