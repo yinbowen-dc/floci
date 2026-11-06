@@ -1,5 +1,10 @@
 # Lambda MicroVMs
 
+Image versions retain their own supported build inputs, including the code
+artifact, base image and build role. Get/list version reads and persistence
+reloads preserve those snapshots. Legacy records without a snapshot fall back
+to the parent image's current inputs; their original inputs cannot be recovered.
+
 **Protocol:** REST JSON
 **Endpoints:** `http://localhost:4566/2025-09-09/...` (images, MicroVMs) and `http://localhost:4566/2026-04-04/...` (network connectors)
 

@@ -8,6 +8,7 @@ import io.github.hectorvent.floci.core.common.AwsArnUtils;
 import io.github.hectorvent.floci.core.common.AwsException;
 import io.github.hectorvent.floci.core.common.EpochSeconds;
 import io.github.hectorvent.floci.core.common.RegionResolver;
+import io.github.hectorvent.floci.services.lambdamicrovms.LambdaMicrovmsService.ImageBuildSpecification;
 import io.github.hectorvent.floci.services.lambdamicrovms.LambdaMicrovmsService.Microvm;
 import io.github.hectorvent.floci.services.lambdamicrovms.LambdaMicrovmsService.MicrovmBuild;
 import io.github.hectorvent.floci.services.lambdamicrovms.LambdaMicrovmsService.MicrovmImage;
@@ -400,9 +401,12 @@ public class LambdaMicrovmsController {
     }
 
     private ObjectNode versionNode(MicrovmImage image, MicrovmImageVersion version) {
-        // A version response repeats the parent image's whole build spec. The
-        // data is all on the image, which this method already receives; it was
-        // simply never written out.
+        ImageBuildSpecification specification = version.buildSpecification;
+        if (specification == null) {
+            // Legacy records did not save the inputs each version was built from.
+            specification = new ImageBuildSpecification(image.baseImageArn, image.baseImageVersion,
+                    image.buildRoleArn, image.codeArtifactUri);
+        }
         ObjectNode node = objectMapper.createObjectNode();
         node.put("imageArn", image.imageArn);
         node.put("imageVersion", version.imageVersion);
@@ -410,10 +414,10 @@ public class LambdaMicrovmsController {
         node.put("status", version.status);
         node.put("createdAt", EpochSeconds.fromInstant(version.createdAt));
         node.put("updatedAt", EpochSeconds.fromInstant(image.updatedAt));
-        node.put("baseImageArn", image.baseImageArn);
-        node.put("baseImageVersion", image.baseImageVersion);
-        node.put("buildRoleArn", image.buildRoleArn);
-        node.putObject("codeArtifact").put("uri", image.codeArtifactUri);
+        node.put("baseImageArn", specification.baseImageArn());
+        node.put("baseImageVersion", specification.baseImageVersion());
+        node.put("buildRoleArn", specification.buildRoleArn());
+        node.putObject("codeArtifact").put("uri", specification.codeArtifactUri());
         // A version's description is its own and nothing sets it. It stays null
         // even once the parent image has one, which is why it cannot simply be
         // read off the image.

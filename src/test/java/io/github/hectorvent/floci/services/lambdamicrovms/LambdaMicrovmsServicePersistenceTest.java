@@ -9,10 +9,12 @@ import io.github.hectorvent.floci.core.storage.AccountAwareStorageBackend;
 import io.github.hectorvent.floci.core.storage.PersistentStorage;
 import io.github.hectorvent.floci.core.storage.StorageBackend;
 import io.github.hectorvent.floci.core.storage.StorageFactory;
+import jakarta.ws.rs.core.HttpHeaders;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +58,43 @@ class LambdaMicrovmsServicePersistenceTest {
         return service.createImage(REGION, ACCOUNT_ID, name,
                 "arn:aws:lambda:us-east-1::microvm-image/al2023-1", "arn:aws:iam::000000000000:role/build",
                 "s3://bucket/artifact.zip", "an image");
+    }
+
+    @Test
+    void versionBuildSpecificationsSurviveARestart() {
+        LambdaMicrovmsService first = process();
+        String arn = createImage(first, "versioned-image").imageArn;
+        first.updateImage(REGION, arn, "arn:aws:lambda:us-east-1:aws:microvm-image:al2023-2",
+                "arn:aws:iam::000000000000:role/next", "s3://bucket/next.zip", "updated");
+        LambdaMicrovmsController controller = new LambdaMicrovmsController(process(),
+                new RegionResolver(REGION, ACCOUNT_ID), new ObjectMapper());
+        JsonNode oldVersion = (JsonNode) controller.getVersion(mock(HttpHeaders.class), arn, "1.0").getEntity();
+        JsonNode newVersion = (JsonNode) controller.getVersion(mock(HttpHeaders.class), arn, "2.0").getEntity();
+        assertEquals("s3://bucket/artifact.zip", oldVersion.path("codeArtifact").path("uri").asText());
+        assertEquals("arn:aws:iam::000000000000:role/build", oldVersion.path("buildRoleArn").asText());
+        assertEquals("s3://bucket/next.zip", newVersion.path("codeArtifact").path("uri").asText());
+    }
+
+    @Test
+    void legacyImageVersionsWithoutBuildSnapshotsRemainReadable() throws IOException {
+        String arn = createImage(process(), "legacy-image").imageArn;
+        ObjectMapper mapper = new ObjectMapper();
+        Path file = storageDir.resolve("lambda-microvm-images.json");
+        JsonNode stored = mapper.readTree(Files.readString(file));
+        int removed = 0;
+        for (JsonNode versions : stored.findValues("versions")) {
+            for (JsonNode version : versions) {
+                if (((ObjectNode) version).remove("buildSpecification") != null) {
+                    ++removed;
+                }
+            }
+        }
+        assertTrue(removed > 0);
+        Files.writeString(file, mapper.writeValueAsString(stored));
+        LambdaMicrovmsController controller = new LambdaMicrovmsController(process(),
+                new RegionResolver(REGION, ACCOUNT_ID), mapper);
+        JsonNode version = (JsonNode) controller.getVersion(mock(HttpHeaders.class), arn, "1.0").getEntity();
+        assertEquals("s3://bucket/artifact.zip", version.path("codeArtifact").path("uri").asText());
     }
 
     @Test

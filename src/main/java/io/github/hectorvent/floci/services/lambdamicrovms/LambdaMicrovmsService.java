@@ -130,8 +130,13 @@ public class LambdaMicrovmsService implements ResourceProvider {
         public String state;
         public String status;
         public Instant createdAt;
+        public ImageBuildSpecification buildSpecification;
         public final List<MicrovmBuild> builds = new ArrayList<>();
     }
+
+    @RegisterForReflection
+    public record ImageBuildSpecification(String baseImageArn, String baseImageVersion,
+                                          String buildRoleArn, String codeArtifactUri) {}
 
     @RegisterForReflection
     public static final class MicrovmBuild {
@@ -187,6 +192,8 @@ public class LambdaMicrovmsService implements ResourceProvider {
         version.state = "SUCCESSFUL";
         version.status = "ACTIVE";
         version.createdAt = Instant.now();
+        version.buildSpecification = new ImageBuildSpecification(image.baseImageArn, image.baseImageVersion,
+                image.buildRoleArn, image.codeArtifactUri);
         // A version is built once per Graviton generation the service targets,
         // newest first. Recorded live: two builds per version, not one.
         for (String generation : CHIPSET_GENERATIONS) {
