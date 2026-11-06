@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -90,6 +91,7 @@ public class LambdaMicrovmsController {
         String region = regionResolver.resolveRegion(headers);
         JsonNode request = parse(body);
         JsonNode codeArtifact = request.path("codeArtifact");
+        Map<String, String> tags = imageTags(request);
         MicrovmImage image = service.createImage(
                 region,
                 regionResolver.getAccountId(),
@@ -98,6 +100,9 @@ public class LambdaMicrovmsController {
                 text(request, "buildRoleArn"),
                 codeArtifact.isMissingNode() ? null : text(codeArtifact, "uri"),
                 text(request, "description"));
+        if (!tags.isEmpty()) {
+            service.tagResource(region, image.imageArn, tags);
+        }
         return Response.status(201).entity(imageNode(image, ImageShape.CREATE)).build();
     }
 
@@ -539,6 +544,24 @@ public class LambdaMicrovmsController {
         } catch (Exception e) {
             throw new AwsException("ValidationException", "Malformed request body", 400);
         }
+    }
+
+    private Map<String, String> imageTags(JsonNode request) {
+        JsonNode value = request.get("tags");
+        if (value == null || value.isNull()) {
+            return Map.of();
+        }
+        if (!value.isObject()) {
+            throw new AwsException("ValidationException", "tags must be an object", 400);
+        }
+        Map<String, String> tags = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonNode> entry : value.properties()) {
+            if (!entry.getValue().isTextual()) {
+                throw new AwsException("ValidationException", "tags values must be strings", 400);
+            }
+            tags.put(entry.getKey(), entry.getValue().textValue());
+        }
+        return tags;
     }
 
     private String text(JsonNode node, String field) {

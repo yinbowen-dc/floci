@@ -1,5 +1,9 @@
 # Lambda MicroVMs
 
+`CreateMicrovmImage` persists request tags through the existing tag mutation
+path. They are visible in `GetMicrovmImage` and `ListTags`; the create response
+keeps its existing null `tags` member.
+
 **Protocol:** REST JSON
 **Endpoints:** `http://localhost:4566/2025-09-09/...` (images, MicroVMs) and `http://localhost:4566/2026-04-04/...` (network connectors)
 
