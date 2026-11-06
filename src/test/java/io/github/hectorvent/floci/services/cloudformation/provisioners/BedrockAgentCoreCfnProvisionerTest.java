@@ -46,7 +46,7 @@ class BedrockAgentCoreCfnProvisionerTest {
 
     private static final String REGION = "us-east-1";
     private static final String RUNTIME_ID = "agent-abcdefghij";
-    private static final String RUNTIME_ARN = "arn:aws:bedrock-agentcore:us-east-1:000000000000:agent/uuid:1";
+    private static final String RUNTIME_ARN = "arn:aws:bedrock-agentcore:us-east-1:000000000000:runtime/" + RUNTIME_ID;
     private static final String MEMORY_ID = "mem-abcdefghij";
     private static final String MEMORY_ARN = "arn:aws:bedrock-agentcore:us-east-1:000000000000:memory/" + MEMORY_ID;
     private static final String ROLE_ARN = "arn:aws:iam::000000000000:role/agent";

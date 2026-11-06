@@ -210,8 +210,7 @@ class CloudFormationBedrockAgentCoreIntegrationTest {
         String runtimeArn = outputs.get("RuntimeArn");
         assertEquals(runtimeId, outputs.get("RuntimeRef"));
         assertTrue(runtimeId.startsWith("cfn_agent_runtime-"), runtimeId);
-        assertTrue(runtimeArn.matches("arn:aws:bedrock-agentcore:us-east-1:000000000000:agent/[0-9a-f-]{36}:1"),
-                runtimeArn);
+        assertEquals("arn:aws:bedrock-agentcore:us-east-1:000000000000:runtime/" + runtimeId, runtimeArn);
         assertEquals("1", outputs.get("RuntimeVersion"));
         assertEquals("READY", outputs.get("RuntimeStatus"));
         assertTrue(outputs.get("WorkloadIdentityArn").contains(":workload-identity-directory/default/workload-identity/"),

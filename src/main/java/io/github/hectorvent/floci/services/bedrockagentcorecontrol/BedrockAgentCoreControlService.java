@@ -289,7 +289,7 @@ public class BedrockAgentCoreControlService {
     }
 
     public String arn(AgentRuntime runtime, String version, String region) {
-        return regionResolver.buildArn(ARN_SERVICE, region, "agent/" + runtime.getUuid() + ":" + version);
+        return regionResolver.buildArn(ARN_SERVICE, region, "runtime/" + runtime.getAgentRuntimeId());
     }
 
     /**
@@ -299,13 +299,10 @@ public class BedrockAgentCoreControlService {
      */
     public boolean runtimeArnExists(String region, String arn) {
         String resource = BedrockAgentCoreArns.resource(arn);
-        if (resource == null || !resource.startsWith("agent/")) {
+        if (resource == null || !resource.startsWith("runtime/")) {
             return true;
         }
-        String uuid = resource.substring("agent/".length());
-        String prefix = keyPrefix(region);
-        return storage.scan(k -> k.startsWith(prefix)).stream()
-                .anyMatch(r -> uuid.equals(r.getUuid()));
+        return storage.get(key(region, resource.substring("runtime/".length()))).isPresent();
     }
 
     public String endpointArn(AgentRuntimeEndpoint endpoint, String region) {
@@ -332,22 +329,16 @@ public class BedrockAgentCoreControlService {
 
     /** The runtime a runtime ARN names, at any version; ResourceNotFoundException when none does. */
     public AgentRuntime getAgentRuntimeByArn(String region, String arn) {
-        String uuid = uuidFromArn(arn);
-        String prefix = keyPrefix(region);
-        return storage.scan(k -> k.startsWith(prefix)).stream()
-                .filter(r -> uuid.equals(r.getUuid()))
-                .findFirst()
-                .orElseThrow(() -> new AwsException("ResourceNotFoundException",
-                        "AgentCore resource not found: " + arn, 404));
+        return getAgentRuntime(runtimeIdFromArn(arn), region);
     }
 
-    private static String uuidFromArn(String arn) {
-        // arn:aws:bedrock-agentcore:<region>:<account>:agent/<uuid>:<version>
+    private static String runtimeIdFromArn(String arn) {
+        // Runtime ARNs identify the runtime, independently of its published versions.
         String resource = BedrockAgentCoreArns.resource(arn);
-        if (resource == null || !resource.startsWith("agent/")) {
+        if (resource == null || !resource.startsWith("runtime/")) {
             throw new AwsException("ValidationException", "Unsupported resource ARN: " + arn, 400);
         }
-        return resource.substring("agent/".length());
+        return resource.substring("runtime/".length());
     }
 
     // ──────────────────────────── Endpoints (Phase 2) ────────────────────────────

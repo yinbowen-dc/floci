@@ -64,8 +64,7 @@ class BedrockAgentCoreControlServiceTest {
         assertEquals(1, rt.getLatestVersion());
         assertEquals("READY", rt.getStatus());
         assertTrue(rt.getWorkloadIdentityArn().contains(":bedrock-agentcore:"));
-        assertTrue(service.arn(rt, "1", REGION)
-                .matches("arn:aws:bedrock-agentcore:us-east-1:000000000000:agent/[0-9a-f-]{36}:1"),
+        assertEquals("arn:aws:bedrock-agentcore:us-east-1:000000000000:runtime/" + rt.getAgentRuntimeId(),
                 service.arn(rt, "1", REGION));
     }
 

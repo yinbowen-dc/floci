@@ -9,6 +9,9 @@ resources, credential providers, gateway rules, and resource policies. No real a
 runtimes reach `READY` immediately and hold metadata only. See
 [the design note](../design/bedrock-agentcore.md) for scope and protocol details.
 
+Runtime ARNs use `runtime/<agentRuntimeId>` and stay stable across runtime
+versions. Runtime ARN lookup, existence checks and tag operations use that id.
+
 ## Supported Actions
 
 <!-- floci:actions:start -->
