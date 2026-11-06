@@ -285,6 +285,9 @@ public class StackSetService implements PassedRoleLookup {
             throw new AwsException("StackSetNotEmptyException",
                     "StackSet is not empty. Delete all stack instances first.", 409);
         }
+        for (StackSetAutoDeploymentTarget target : listStackSetAutoDeploymentTargets(name)) {
+            autoDeploymentTargets.delete(name + "::" + target.getOrganizationalUnitId());
+        }
         stackSets.delete(name);
         LOG.infov("Deleted StackSet: {0}", name);
     }

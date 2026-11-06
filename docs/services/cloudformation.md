@@ -1,5 +1,8 @@
 # CloudFormation
 
+Deleting an empty StackSet also removes its saved automatic-deployment targets.
+A new StackSet reusing that name starts without the deleted set's OU targets.
+
 **Protocol:** Query (XML) — `POST http://localhost:4566/` with `Action=` parameter
 **Endpoint:** `POST http://localhost:4566/`
 

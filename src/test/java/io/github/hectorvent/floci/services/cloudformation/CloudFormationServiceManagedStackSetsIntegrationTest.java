@@ -18,6 +18,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /** AWS Organizations semantics required by service-managed CloudFormation StackSets. */
 @QuarkusTest
@@ -493,6 +494,39 @@ class CloudFormationServiceManagedStackSetsIntegrationTest {
                 "{\"AccountId\":\"" + accountId + "\",\"SourceParentId\":\"" + sourceParent
                         + "\",\"DestinationParentId\":\"" + destinationParent + "\"}")
                 .post("/").then().statusCode(200);
+    }
+
+    @Test
+    void recreatedEmptyStackSetDoesNotInheritTheDeletedSetsTargets() {
+        String management = "759400000001";
+        organizations(management, "CreateOrganization", "{\"FeatureSet\":\"ALL\"}")
+                .post("/").then().statusCode(200);
+        String rootId = organizations(management, "ListRoots", "{}")
+                .post("/").then().statusCode(200).extract().path("Roots[0].Id");
+        String ou = organizations(management, "CreateOrganizationalUnit",
+                "{\"ParentId\":\"" + rootId + "\",\"Name\":\"EmptyTarget\"}")
+                .post("/").then().statusCode(200).extract().path("OrganizationalUnit.Id");
+        cloudFormation(management, "ActivateOrganizationsAccess").post("/").then().statusCode(200);
+        String name = "reused-targets-" + UUID.randomUUID().toString().substring(0, 8);
+        String firstId = cloudFormation(management, "CreateStackSet").formParam("StackSetName", name)
+                .formParam("PermissionModel", "SERVICE_MANAGED").formParam("TemplateBody", queueTemplate("unused"))
+                .post("/").then().statusCode(200).extract().xmlPath().getString("CreateStackSetResponse.CreateStackSetResult.StackSetId");
+        cloudFormation(management, "CreateStackInstances").formParam("StackSetName", name)
+                .formParam("DeploymentTargets.OrganizationalUnitIds.member.1", ou)
+                .formParam("Regions.member.1", REGION).post("/").then().statusCode(200);
+        cloudFormation(management, "ListStackSetAutoDeploymentTargets").formParam("StackSetName", name)
+                .post("/").then().statusCode(200).body(containsString(ou));
+        cloudFormation(management, "DeleteStackSet").formParam("StackSetName", name).post("/").then().statusCode(200);
+        String secondId = cloudFormation(management, "CreateStackSet").formParam("StackSetName", name)
+                .formParam("PermissionModel", "SERVICE_MANAGED").formParam("TemplateBody", queueTemplate("unused"))
+                .post("/").then().statusCode(200).extract().xmlPath().getString("CreateStackSetResponse.CreateStackSetResult.StackSetId");
+        try {
+            assertNotEquals(firstId, secondId);
+            cloudFormation(management, "ListStackSetAutoDeploymentTargets").formParam("StackSetName", name)
+                    .post("/").then().statusCode(200).body(not(containsString(ou)));
+        } finally {
+            cloudFormation(management, "DeleteStackSet").formParam("StackSetName", name).post("/").then().statusCode(200);
+        }
     }
 
     private RequestSpecification organizations(String action, String body) {
